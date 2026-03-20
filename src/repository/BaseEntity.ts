@@ -17,6 +17,7 @@ import type { UpsertOptions } from "./UpsertOptions"
 import type { UpdateOptions } from "./UpdateOptions"
 import type { EntityTarget } from "../common/EntityTarget"
 import type { PickKeysByType } from "../common/PickKeysByType"
+import type { ObjectLiteral } from "../common/ObjectLiteral"
 
 /**
  * Base abstract entity for all entities, used in ActiveRecord patterns.
@@ -583,22 +584,6 @@ export class BaseEntity {
     }
 
     /**
-     * Finds first entity that matches given options.
-     * @param id
-     * @deprecated use `findOneBy` method instead in conjunction with `In` operator, for example:
-     *
-     * .findOneBy({
-     *     id: 1 // where "id" is your primary column name
-     * })
-     */
-    static findOneById<T extends BaseEntity>(
-        this: { new (): T } & typeof BaseEntity,
-        id: string | number | Date | ObjectId,
-    ): Promise<T | null> {
-        return this.getRepository<T>().findOneById(id)
-    }
-
-    /**
      * Finds first entity that matches given conditions.
      * @param options
      */
@@ -629,7 +614,7 @@ export class BaseEntity {
     static query<T extends BaseEntity>(
         this: { new (): T } & typeof BaseEntity,
         query: string,
-        parameters?: any[],
+        parameters?: any[] | ObjectLiteral,
     ): Promise<any> {
         return this.getRepository<T>().query(query, parameters)
     }

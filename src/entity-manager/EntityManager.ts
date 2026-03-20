@@ -11,7 +11,6 @@ import { NoNeedToReleaseEntityManagerError } from "../error/NoNeedToReleaseEntit
 import { MongoRepository } from "../repository/MongoRepository"
 import { TreeRepository } from "../repository/TreeRepository"
 import { Repository } from "../repository/Repository"
-import { FindOptionsUtils } from "../find-options/FindOptionsUtils"
 import { PlainObjectToNewEntityTransformer } from "../query-builder/transformer/PlainObjectToNewEntityTransformer"
 import { PlainObjectToDatabaseEntityTransformer } from "../query-builder/transformer/PlainObjectToDatabaseEntityTransformer"
 import { TreeRepositoryNotSupportedError, TypeORMError } from "../error"
@@ -170,7 +169,10 @@ export class EntityManager {
      * @param parameters
      * @see [Official docs](https://typeorm.io/docs/Working%20with%20Entity%20Manager/entity-manager-api/) for examples.
      */
-    async query<T = any>(query: string, parameters?: any[]): Promise<T> {
+    async query<T = any>(
+        query: string,
+        parameters?: any[] | ObjectLiteral,
+    ): Promise<T> {
         return this.connection.query(query, parameters, this.queryRunner)
     }
 
@@ -1057,11 +1059,7 @@ export class EntityManager {
         options?: FindManyOptions<Entity>,
     ): Promise<boolean> {
         const metadata = this.connection.getMetadata(entityClass)
-        return this.createQueryBuilder(
-            entityClass,
-            FindOptionsUtils.extractFindManyOptionsAlias(options) ||
-                metadata.name,
-        )
+        return this.createQueryBuilder(entityClass, metadata.name)
             .setFindOptions(options || {})
             .getExists()
     }
@@ -1092,11 +1090,7 @@ export class EntityManager {
         options?: FindManyOptions<Entity>,
     ): Promise<number> {
         const metadata = this.connection.getMetadata(entityClass)
-        return this.createQueryBuilder(
-            entityClass,
-            FindOptionsUtils.extractFindManyOptionsAlias(options) ||
-                metadata.name,
-        )
+        return this.createQueryBuilder(entityClass, metadata.name)
             .setFindOptions(options || {})
             .getCount()
     }
@@ -1218,8 +1212,7 @@ export class EntityManager {
         const metadata = this.connection.getMetadata(entityClass)
         return this.createQueryBuilder<Entity>(
             entityClass as any,
-            FindOptionsUtils.extractFindManyOptionsAlias(options) ||
-                metadata.name,
+            metadata.name,
         )
             .setFindOptions(options || {})
             .getMany()
@@ -1257,8 +1250,7 @@ export class EntityManager {
         const metadata = this.connection.getMetadata(entityClass)
         return this.createQueryBuilder<Entity>(
             entityClass as any,
-            FindOptionsUtils.extractFindManyOptionsAlias(options) ||
-                metadata.name,
+            metadata.name,
         )
             .setFindOptions(options || {})
             .getManyAndCount()
@@ -1296,12 +1288,6 @@ export class EntityManager {
     ): Promise<Entity | null> {
         const metadata = this.connection.getMetadata(entityClass)
 
-        // prepare alias for built query
-        let alias: string = metadata.name
-        if (options && options.join) {
-            alias = options.join.alias
-        }
-
         if (!options.where) {
             throw new Error(
                 `You must provide selection conditions in order to find a single row.`,
@@ -1309,7 +1295,7 @@ export class EntityManager {
         }
 
         // create query builder and apply find options
-        return this.createQueryBuilder<Entity>(entityClass, alias)
+        return this.createQueryBuilder<Entity>(entityClass, metadata.name)
             .setFindOptions({
                 ...options,
                 take: 1,
@@ -1335,32 +1321,6 @@ export class EntityManager {
                 where,
                 take: 1,
             })
-            .getOne()
-    }
-
-    /**
-     * Finds first entity that matches given id.
-     * If entity was not found in the database - returns null.
-     * @param entityClass
-     * @param id
-     * @deprecated use `findOneBy` method instead in conjunction with `In` operator, for example:
-     *
-     * .findOneBy({
-     *     id: 1 // where "id" is your primary column name
-     * })
-     */
-    async findOneById<Entity extends ObjectLiteral>(
-        entityClass: EntityTarget<Entity>,
-        id: number | string | Date | ObjectId,
-    ): Promise<Entity | null> {
-        const metadata = this.connection.getMetadata(entityClass)
-
-        // create query builder and apply find options
-        return this.createQueryBuilder<Entity>(entityClass, metadata.name)
-            .setFindOptions({
-                take: 1,
-            })
-            .whereInIds(metadata.ensureEntityIdMap(id))
             .getOne()
     }
 
